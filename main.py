@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
-from typing import Optional, List, Dict
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Path, Query, Body
+from typing import Optional, List, Dict, Annotated
+from pydantic import BaseModel, Field
 
 
 app = FastAPI()
@@ -16,15 +16,25 @@ class PostUpdate(BaseModel):
     author_id: int
 
 
+class Post(BaseModel):
+    id: int
+    title: str
+    author: 'User'
+
+
 class User(BaseModel):
     id: int
     name: str
     age: int
 
-class Post(BaseModel):
-    id: int
-    title: str
-    author: User
+
+class UserCreate(BaseModel):
+    name: Annotated[
+        str, Field(..., title='Имя пользователя', min_length=2, max_length=20)
+    ]
+    age: Annotated[
+        int, Field(..., title='Возрвст пользователя', ge=1, le=100)
+        ]
 
 
 # @app.get('/')
@@ -65,7 +75,7 @@ async def news() -> List[Post]:
 
 
 @app.get('/news/{id}')
-async def news_detail(id: int) -> Post:
+async def news_detail(id: Annotated[int, Path(..., title='Тут ID', ge=1, lt=1000)]) -> Post:
     for post in posts:
         if post['id'] == id:
             return Post(**post)
@@ -73,7 +83,7 @@ async def news_detail(id: int) -> Post:
 
 
 @app.get('/search')
-async def search(post_id: Optional[int] = None) -> Dict[str, Optional[Post]]:
+async def search(post_id: Annotated[Optional[int], Query(title='ID из поста для поиска', ge=1, le=50)]) -> Dict[str, Optional[Post]]:
     if post_id:
         for post in posts:
             if post['id'] == post_id:
@@ -96,6 +106,24 @@ async def create_news(post: PostCreate) -> Post:
     posts.append(new_post)
 
     return Post(**new_post)
+
+
+@app.post('/users/create')
+async def create_users(user: Annotated[
+    UserCreate,
+    Body(..., example={
+        'name': 'UserName',
+        'age': 1
+    })
+]) -> Post:
+    
+    
+    new_user_id = len(users) + 1
+
+    new_user = {'id': new_user_id, 'name': user.name, 'age': user.age}
+    posts.append(new_user)
+
+    return Post(**new_user)
 
 
 # @app.put('/news/update/{id}')
