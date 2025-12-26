@@ -6,6 +6,16 @@ from pydantic import BaseModel
 app = FastAPI()
 
 
+class PostCreate(BaseModel):
+    title: str
+    author_id: int
+
+
+class PostUpdate(BaseModel):
+    title: str
+    author_id: int
+
+
 class User(BaseModel):
     id: int
     name: str
@@ -71,3 +81,33 @@ async def search(post_id: Optional[int] = None) -> Dict[str, Optional[Post]]:
         raise HTTPException(status_code=404, detail='Post not found')
     else:
         return {'data': None}
+    
+
+@app.post('/news/create')
+async def create_news(post: PostCreate) -> Post:
+    author = next((user for user in users if user['id'] == post.author_id), None)
+
+    if not author:
+        raise HTTPException(detail='User not found', status_code=404)
+    
+    new_post_id = len(posts) + 1
+
+    new_post = {'id': new_post_id, 'title': post.title, 'author': author}
+    posts.append(new_post)
+
+    return Post(**new_post)
+
+
+# @app.put('/news/update/{id}')
+# async def update_news(post: PostUpdate) -> Post:
+#     author = next((user for user in users if user['id'] == post.author_id), None)
+
+#     if not author:
+#         raise HTTPException(detail='User not found', status_code=404)
+    
+#     update_post_id = len(posts) + 1
+
+#     update_post = {'id': update_post_id, 'title': post.title, 'author': author}
+#     posts.append(update_post)
+
+#     return Post(**update_post)
